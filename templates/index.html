@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Study Assistant</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            opacity: 0.9;
+        }
+
+        .tabs {
+            display: flex;
+            background: #f5f5f5;
+            border-bottom: 2px solid #e0e0e0;
+        }
+
+        .tab {
+            flex: 1;
+            padding: 20px;
+            text-align: center;
+            cursor: pointer;
+            background: #f5f5f5;
+            border: none;
+            font-size: 16px;
+            transition: all 0.3s;
+        }
+
+        .tab:hover {
+            background: #e0e0e0;
+        }
+
+        .tab.active {
+            background: white;
+            border-bottom: 3px solid #667eea;
+            font-weight: bold;
+        }
+
+        .tab-content {
+            display: none;
+            padding: 30px;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .chat-box {
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            padding: 20px;
+            height: 400px;
+            overflow-y: auto;
+            margin-bottom: 20px;
+            background: #fafafa;
+        }
+
+        .message {
+            margin: 15px 0;
+            padding: 15px;
+            border-radius: 10px;
+            max-width: 80%;
+            animation: fadeIn 0.3s;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .user-message {
+            background: #667eea;
+            color: white;
+            margin-left: auto;
+            text-align: right;
+        }
+
+        .assistant-message {
+            background: white;
+            border: 2px solid #e0e0e0;
+        }
+
+        .input-area {
+            display: flex;
+            gap: 10px;
+        }
+
+        input[type="text"], textarea {
+            flex: 1;
+            padding: 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 16px;
+            font-family: inherit;
+        }
+
+        textarea {
+            min-height: 150px;
+            resize: vertical;
+        }
+
+        button {
+            padding: 15px 30px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            transition: transform 0.2s;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        .result-box {
+            background: #f9f9f9;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 20px;
+            white-space: pre-wrap;
+            line-height: 1.6;
+        }
+
+        .loading {
+            text-align: center;
+            color: #667eea;
+            padding: 20px;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎓 Smart Study Assistant</h1>
+            <p>Your AI-powered learning companion</p>
+        </div>
+
+        <div class="tabs">
+            <button class="tab active" onclick="switchTab('chat')">💬 Ask Questions</button>
+            <button class="tab" onclick="switchTab('summarize')">📝 Summarize</button>
+            <button class="tab" onclick="switchTab('quiz')">📊 Generate Quiz</button>
+        </div>
+
+        <!-- Chat Tab -->
+        <div id="chat" class="tab-content active">
+            <div class="chat-box" id="chatBox"></div>
+            <div class="input-area">
+                <input type="text" id="chatInput" placeholder="Ask me anything about your studies..."
+                       onkeypress="if(event.key==='Enter') sendMessage()">
+                <button onclick="sendMessage()">Send</button>
+            </div>
+        </div>
+
+        <!-- Summarize Tab -->
+        <div id="summarize" class="tab-content">
+            <textarea id="summarizeInput" placeholder="Paste your study material here..."></textarea>
+            <button onclick="getSummary()" style="margin-top: 20px; width: 100%;">Generate Summary</button>
+            <div id="summaryResult"></div>
+        </div>
+
+        <!-- Quiz Tab -->
+        <div id="quiz" class="tab-content">
+            <textarea id="quizInput" placeholder="Paste your study material here..."></textarea>
+            <div style="display: flex; gap: 10px; margin-top: 20px;">
+                <input type="number" id="numQuestions" value="5" min="1" max="10"
+                       style="width: 100px;" placeholder="Questions">
+                <button onclick="generateQuiz()" style="flex: 1;">Generate Quiz</button>
+            </div>
+            <div id="quizResult"></div>
+        </div>
+    </div>
+
+    <script>
+        function switchTab(tabName) {
+            // Hide all tabs
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+
+            // Show selected tab
+            document.getElementById(tabName).classList.add('active');
+            event.target.classList.add('active');
+        }
+
+        async function sendMessage() {
+            const input = document.getElementById('chatInput');
+            const message = input.value.trim();
+            if (!message) return;
+
+            addChatMessage('user', message);
+            input.value = '';
+
+            const chatBox = document.getElementById('chatBox');
+            chatBox.innerHTML += '<div class="loading">AI is thinking...</div>';
+
+            try {
+                const response = await fetch('/api/chat', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({message: message})
+                });
+
+                const data = await response.json();
+                document.querySelector('.loading').remove();
+
+                if (data.error) {
+                    addChatMessage('assistant', 'Error: ' + data.error);
+                } else {
+                    addChatMessage('assistant', data.response);
+                }
+            } catch (error) {
+                document.querySelector('.loading').remove();
+                addChatMessage('assistant', 'Error: ' + error.message);
+            }
+        }
+
+        function addChatMessage(role, text) {
+            const chatBox = document.getElementById('chatBox');
+            const msg = document.createElement('div');
+            msg.className = 'message ' + (role === 'user' ? 'user-message' : 'assistant-message');
+            msg.textContent = text;
+            chatBox.appendChild(msg);
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+
+        async function getSummary() {
+            const content = document.getElementById('summarizeInput').value.trim();
+            if (!content) {
+                alert('Please enter some content to summarize');
+                return;
+            }
+
+            const resultDiv = document.getElementById('summaryResult');
+            resultDiv.innerHTML = '<div class="loading">Generating summary...</div>';
+
+            try {
+                const response = await fetch('/api/summarize', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({content: content})
+                });
+
+                const data = await response.json();
+
+                if (data.error) {
+                    resultDiv.innerHTML = '<div class="result-box">Error: ' + data.error + '</div>';
+                } else {
+                    resultDiv.innerHTML = '<div class="result-box">' + data.summary + '</div>';
+                }
+            } catch (error) {
+                resultDiv.innerHTML = '<div class="result-box">Error: ' + error.message + '</div>';
+            }
+        }
+
+        async function generateQuiz() {
+            const content = document.getElementById('quizInput').value.trim();
+            const numQuestions = document.getElementById('numQuestions').value;
+
+            if (!content) {
+                alert('Please enter some content to generate quiz from');
+                return;
+            }
+
+            const resultDiv = document.getElementById('quizResult');
+            resultDiv.innerHTML = '<div class="loading">Generating quiz...</div>';
+
+            try {
+                const response = await fetch('/api/generate-quiz', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        content: content,
+                        num_questions: parseInt(numQuestions)
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.error) {
+                    resultDiv.innerHTML = '<div class="result-box">Error: ' + data.error + '</div>';
+                } else {
+                    resultDiv.innerHTML = '<div class="result-box">' + data.quiz + '</div>';
+                }
+            } catch (error) {
+                resultDiv.innerHTML = '<div class="result-box">Error: ' + error.message + '</div>';
+            }
+        }
+    </script>
+</body>
+</html>
